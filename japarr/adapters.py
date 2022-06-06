@@ -6,7 +6,7 @@ from typing import Optional
 import toml
 from pathlib import Path
 import requests
-
+from datetime import datetime
 
 logger = get_module_logger("Adapters")
 
@@ -71,7 +71,7 @@ class OverseerAdapter(BaseAdapter):
         if results.status_code == 200:
             result_json = results.json()
             for result in result_json.get("results", []):
-                if "JP" in result.get("originCountry", []):
+                if "JP" in result.get("originCountry", []) or result.get("originalLanguage", "") == "ja":
                     if result.get("mediaType") == "tv":
                         return self.get_tv_details(result["id"])
                     else:
@@ -101,6 +101,7 @@ class OverseerAdapter(BaseAdapter):
 
 
 class SonarrAdapter(BaseAdapter):
+
     # docs: https://github.com/Sonarr/Sonarr/wiki/Series
     def __init__(self):
         super().__init__("sonarr")
@@ -164,15 +165,111 @@ class SonarrAdapter(BaseAdapter):
         upload_result = requests.post(
             f"{self.url}/series", json=data, headers=self.headers
         )
-        if upload_result.status_code==400:
-            discord_writer.send(f"Could not add '{overseer_data['originalName']}' to Sonarr. Check logs for traceback.")
+        if upload_result.status_code == 400:
+            error_json = eval(upload_result.text)[0]
+            error = error_json.get("errorMessage")
+            value = error_json.get("attemptedValue")
+            discord_writer.send(
+                f"Could not add '{overseer_data['originalName']}' to Sonarr.\n Reason: {error} with value: '{value}'"
+            )
             logger.info("Drama could not be added to Sonarr! Reason:")
             logger.info(upload_result.text)
         else:
-            discord_writer.send(f"Added {overseer_data['originalName']} to Sonarr.")
+            discord_writer.send(
+                f"Added {overseer_data['originalName']} to Sonarr."
+            )
         # logger.debug("Show Creation result: %s", upload_result)
 
 
 class RadarrAdapter(BaseAdapter):
     def __init__(self):
         super().__init__("radarr")
+        if not self.root_folder:
+            self._set_root_folder()
+
+    def _set_root_folder(self):
+        folder_request = requests.get(
+            f"{self.url}/v3/rootFolder", headers=self.headers
+        )
+        if folder_request.status_code == 200:
+            folder_json = folder_request.json()
+            try:
+                self.root_folder = folder_json[0]["path"]
+            except KeyError:
+                logger.warning(
+                    "Couldn't retrieve rootfolder! Either set rootfolder via config 'root_folder' or make sure the /rootfolder api endpoint is reachable!"
+                )
+                exit
+
+    def create(self, overseer_data: dict) -> dict:
+        media_info = overseer_data["mediaInfo"]
+        slugname = overseer_data["title"].replace(" ", "-")
+        today = datetime.now()
+        release = datetime.strptime(overseer_data["releaseDate"], "%Y-%m-%d")
+        data = {
+            "added": today.isoformat(),
+            "addOptions": {
+                "searchForMovie":False
+            },
+            "alternateTitles":None,
+            "certification":16,
+            "cleanTitle": slugname,
+            "digitalRelease":release.isoformat(),
+            "folder": slugname,
+            "folderName":"",
+            "genres":overseer_data["genres"],
+            "hasFile": False,
+            "id":0,
+            "images": [
+                {
+                    "coverType": "poster",
+                    "remoteUrl": f"https://image.tmdb.org/t/p/w600_and_h900_bestv2/{overseer_data['posterPath']}.jpg",
+                },
+                {
+                    "coverType": "banner",
+                    "remoteUrl": f"https://image.tmdb.org/t/p/w1920_and_h800_multi_faces//{overseer_data['backdropPath']}.jpg",
+                },
+            ],
+            "imdbId": overseer_data.get("imdbId"),
+            "isAvailable":True,
+            "minimumAvailability": "released",
+            "monitored": self.automonitor,
+            # "originalLanguage":""
+            "origintalTitle": overseer_data["originalTitle"],
+            "overview": overseer_data["overview"],
+            "qualityProfileId": self.profile_id,
+            # "ratings":""
+            "remotePoster":"",
+            "rootFolderPath": self.root_folder,
+            "runtime": overseer_data.get("runtime"),
+            "secondaryYearSourceId":0,
+            "sizeOnDisk":0,
+            "sortTitle":slugname,
+            "status":overseer_data.get("released"),
+            "studio":"",
+            "tags":[],
+            "title":overseer_data["originalTitle"],
+            "titleSlug":media_info.get("tmdbId"),
+            "tmdbId": media_info.get("tmdbId"),
+            "website":overseer_data.get("homepage"),
+            "year":release.year,
+            "youTubeTrailderId":""
+        },
+        upload_result = requests.post(
+            f"{self.url}/v3/movie", json=data, headers=self.headers
+        )
+        if upload_result.status_code == 400:
+            error_json = eval(upload_result.text)
+            if isinstance(error_json, list):
+                error_json = error_json[0]
+            error = error_json.get("title")
+            value = error_json.get("errors")
+            discord_writer.send(
+                f"Could not add '{overseer_data['originalTitle']}' to Radarr.\n Reason: {error} with value: '{value}'"
+            )
+            logger.info("Drama could not be added to Radarr! Reason:")
+            logger.info(upload_result.text)
+        else:
+            discord_writer.send(
+                f"Added {overseer_data['originalName']} to Radarr."
+            )
