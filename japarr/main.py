@@ -4,114 +4,17 @@
 
 import cgi
 import json
-from lib2to3.pytree import Base
-from mimetypes import init
 import re
 import shutil
-from typing import Optional
-from unittest import result
 import urllib.request
-from distutils.command.config import config
 from pathlib import Path
 
 import requests
-import toml
 from parsel import Selector
-from requests.compat import quote_plus, urljoin
+from requests.compat import urljoin
 from tqdm import tqdm
 
-from japarr.logger import get_module_logger
-
-logger = get_module_logger("Japarr")
-
-
-class BaseAdapter:
-    def _load_config(self, system: str):
-        try:
-            self.system = system
-            config_path = Path(__file__).parent / "config"
-            cfg = toml.load(config_path / "config.toml")
-            system_cfg = cfg[self.system]
-            self.url = f'{system_cfg["protocol"]}://{system_cfg["host"]}:{system_cfg["port"]}/api'
-            self.headers = {
-                "X-Api-Key": system_cfg["api_key"],
-                "accept": "application/json",
-            }
-        except KeyError:
-            logger.error(
-                "Not all necessary settings set for system: %s.\n Please check your config.toml",
-                system,
-            )
-
-    def _test_connection(self):
-        status = requests.get(
-            f"{self.url}/system/status", headers=self.headers
-        )
-        if status.status_code == 200:
-            logger.debug(
-                "%s status is running and api is reachable!", self.system
-            )
-        else:
-            logger.warning(
-                "%s is not reachable. Statuscode: %s",
-                self.system,
-                status.status_code,
-            )
-
-    def __init__(self, system: str):
-        self._load_config(system)
-        self._test_connection()
-
-
-class OverseerAdapter(BaseAdapter):
-    # docs: https://api-docs.overseerr.dev/#/search/get_search
-    def __init__(self):
-        super().__init__("overseer")
-
-    def search(self, query: str) -> Optional[dict]:
-        results = requests.get(
-            f"{self.url}/v1/search?query=={query}&language=jp",
-            headers=self.headers,
-        )
-        if results.status_code == 200:
-            result_json = results.json()
-            for result in result_json.get("results", []):
-                if "JP" in result.get("originCountry", []):
-                    return result
-        else:
-            print(results.status_code)
-
-
-class SonarrAdapter(BaseAdapter):
-    # docs: https://github.com/Sonarr/Sonarr/wiki/Series
-    def __init__(self):
-        super().__init__("sonarr")
-
-    def create(self, overseer_data: dict) -> dict:
-        media_info = overseer_data["mediaInfo"]
-        data = {
-            "tvdbId": media_info["tvdbId"],
-            "title": overseer_data["name"],
-            "profileId": 0,
-            "titleSlug": overseer_data["name"],
-            "images": [
-                {
-                    "coverType": "poster",
-                    "remoteUrl": f"https://image.tmdb.org/t/p/w600_and_h900_bestv2/{overseer_data['posterPath']}.jpg",
-                },
-                {
-                    "coverType": "banner",
-                    "remoteUrl": f"https://image.tmdb.org/t/p/w1920_and_h800_multi_faces//{overseer_data['backdropPath']}.jpg",
-                },
-            ],
-            "seasons": [],  # TODO
-        }
-        requests.post(f"{self.url}/series", data=data, headers=self.headers)
-
-
-class RadarrAdapter(BaseAdapter):
-    def __init__(self):
-        super().__init__("radarr")
+from japarr.adapters import OverseerAdapter, SonarrAdapter
 
 
 class JRawsDownloader:
@@ -125,7 +28,7 @@ class JRawsDownloader:
     page = None
 
     def __init__(self):
-        self.load_SAVE_PATH()
+        self.load_save_path()
         if self.page and int(self.page) > 1:
             self.DRAMA_URL += f"page/{self.page}/"
         drama_page = requests.get(self.DRAMA_URL)
@@ -222,7 +125,7 @@ class JRawsDownloader:
             page = requests.get(next_page)
             self.download_dramas_from_page(page)
 
-    def load_SAVE_PATH(self):
+    def load_save_path(self):
         if (self.SAVE_PATH / self.SAVE_FILE).is_file():
             with open(self.SAVE_PATH / self.SAVE_FILE, "r") as f_in:
                 save_file = json.load(f_in)
@@ -232,4 +135,6 @@ class JRawsDownloader:
 
 if __name__ == "__main__":
     overseer = OverseerAdapter()
-    overseer.search("シジュウカラ")
+    sonarr = SonarrAdapter()
+    result = overseer.search("30までにとうるさくて")
+    sonarr.create(result)

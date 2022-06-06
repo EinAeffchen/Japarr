@@ -1,20 +1,34 @@
 # don't bother with trying the keys here, they're solely for local development systems
 
-[sonarr]
-protocol="http"
-host="plex.farmer"
-port=8989
-api_key="24003076ecab4022a341283ef87ded8c"
+[general]
 
+
+[sonarr]
+protocol = "http"
+host = "plex.farmer"
+port = 8989
+api_key = "24003076ecab4022a341283ef87ded8c"
+
+default_profile = 1
+automonitor = true
+season_folder = true
+[sonarr.optional]
+# rootfolder will be retrieved via api. If you want to use another folder
+# than set in sonarr configs, define it yourself here
+root_folder = "" 
 
 [radarr]
-protocol="http"
-host="plex.farmer"
-port=7878
-api_key="MTY0NTQ0ODY0OTM0ODg4MWY2NWQxLTU2ZjMtNDBhOC04YTNmLWY0OWRiMTk3YzUzZSk="
+protocol = "http"
+host = "plex.farmer"
+port = 7878
+api_key = "MTY0NTQ0ODY0OTM0ODg4MWY2NWQxLTU2ZjMtNDBhOC04YTNmLWY0OWRiMTk3YzUzZSk="
+
+default_profile = 1
+automonitor = true
+seasonFolder = true
 
 [overseer]
-protocol="http"
-host="plex.farmer"
-port=5055
-api_key="MTY0NTQ0ODY0OTM0ODg4MWY2NWQxLTU2ZjMtNDBhOC04YTNmLWY0OWRiMTk3YzUzZSk="
+protocol = "http"
+host = "plex.farmer"
+port = 5055
+api_key = "MTY0NTQ0ODY0OTM0ODg4MWY2NWQxLTU2ZjMtNDBhOC04YTNmLWY0OWRiMTk3YzUzZSk="
