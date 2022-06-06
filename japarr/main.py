@@ -13,6 +13,7 @@ import requests
 from parsel import Selector
 from requests.compat import urljoin
 from tqdm import tqdm
+from japarr.discord import discord_writer
 
 from japarr.adapters import OverseerAdapter, SonarrAdapter
 

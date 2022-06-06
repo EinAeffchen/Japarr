@@ -1,12 +1,14 @@
 from ast import parse
 from distutils.command.upload import upload
 from japarr.logger import get_module_logger
+from japarr.discord import discord_writer
 from typing import Optional
 import toml
 from pathlib import Path
 import requests
 
-logger = get_module_logger("Japarr")
+
+logger = get_module_logger("Adapters")
 
 
 class BaseAdapter:
@@ -163,8 +165,12 @@ class SonarrAdapter(BaseAdapter):
             f"{self.url}/series", json=data, headers=self.headers
         )
         if upload_result.status_code==400:
-            #TODO - Discord warning
-        logger.debug("Show Creation result: %s", upload_result)
+            discord_writer.send(f"Could not add '{overseer_data['originalName']}' to Sonarr. Check logs for traceback.")
+            logger.info("Drama could not be added to Sonarr! Reason:")
+            logger.info(upload_result.text)
+        else:
+            discord_writer.send(f"Added {overseer_data['originalName']} to Sonarr.")
+        # logger.debug("Show Creation result: %s", upload_result)
 
 
 class RadarrAdapter(BaseAdapter):

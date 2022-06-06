@@ -1,7 +1,7 @@
 # don't bother with trying the keys here, they're solely for local development systems
 
 [general]
-
+discord_webhook=""
 
 [sonarr]
 protocol = "http"
