@@ -28,6 +28,8 @@ class DiscordConnector:
     def send(self, message):
         if self.active:
             self.webhook.send(message)
+        else:
+            logger.info(message)
 
 
 discord_writer = DiscordConnector()
