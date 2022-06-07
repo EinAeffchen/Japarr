@@ -1,7 +1,7 @@
 # don't bother with trying the keys here, they're solely for local development systems
 
 [general]
-discord_webhook=""
+discord_webhook = "https://discord.com/api/webhooks/983334269646688317/h7IRtKl4uFC9NiAkaeIrk_HpXm9g-iJgp4aLHdl5Wc_iZKlC_-LGZ7jtTY-0hzAxiMHT"
 
 [sonarr]
 protocol = "http"
@@ -9,23 +9,30 @@ host = "plex.farmer"
 port = 8989
 api_key = "24003076ecab4022a341283ef87ded8c"
 
-default_profile = 1
+default_profile = 1  #quality profile id
 automonitor = true
 season_folder = true
+
 [sonarr.optional]
 # rootfolder will be retrieved via api. If you want to use another folder
 # than set in sonarr configs, define it yourself here
-root_folder = "" 
+root_folder = ""
 
 [radarr]
 protocol = "http"
 host = "plex.farmer"
 port = 7878
-api_key = "MTY0NTQ0ODY0OTM0ODg4MWY2NWQxLTU2ZjMtNDBhOC04YTNmLWY0OWRiMTk3YzUzZSk="
+api_key = "978d05f262d545548fd540a21c419785"
 
 default_profile = 1
 automonitor = true
 seasonFolder = true
+
+[radarr.optional]
+# rootfolder will be retrieved via api. If you want to use another folder
+# than set in sonarr configs, define it yourself here
+root_folder = ""
+tags = ["japanese"]
 
 [overseer]
 protocol = "http"

@@ -13,9 +13,11 @@ import requests
 from parsel import Selector
 from requests.compat import urljoin
 from tqdm import tqdm
-from japarr.discord import discord_writer
+from japarr.adapters.discord import discord_writer
 
-from japarr.adapters import OverseerAdapter, SonarrAdapter
+from japarr.adapters.overseer import OverseerAdapter
+from japarr.adapters.sonarr import SonarrAdapter
+from japarr.adapters.radarr import RadarrAdapter
 
 
 class JRawsDownloader:
@@ -136,6 +138,6 @@ class JRawsDownloader:
 
 if __name__ == "__main__":
     overseer = OverseerAdapter()
-    sonarr = SonarrAdapter()
-    result = overseer.search("30までにとうるさくて")
-    sonarr.create(result)
+    radarr = RadarrAdapter()
+    result = overseer.search("Ninja Sentai Kakuranger: The Movie")
+    radarr.create(result)
