@@ -74,8 +74,6 @@ class JRawsDownloader:
         for download in download_links:
             episode = download.xpath("./span[@class='episode']/text()").get()
             url = download.xpath("./@href").get()
-            print(episode)
-            print(url)
             downloads[episode] = url
         return downloads
 
@@ -88,6 +86,7 @@ class JRawsDownloader:
             download_infos.xpath("/text()").getall()[0]
         )
         article_dict["download_urls"] = self._parse_download(download_infos[1])
+        return article_dict
 
     def download_episodes(self, drama_url: str):
         page_req = requests.get(drama_url)
