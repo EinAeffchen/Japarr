@@ -1,6 +1,5 @@
 from discord import NotFound, RequestsWebhookAdapter, Webhook
 from japarr.logger import get_module_logger
-import japarr
 from japarr.config.config import get_config
 logger = get_module_logger("Discord")
 
@@ -22,10 +21,12 @@ class DiscordConnector:
             self.active = False
 
     def send(self, message):
+        """
+        bla
+        
+        docstring
+        a = 4"""
         if self.active:
             self.webhook.send(message)
         else:
             logger.info(message)
-
-
-discord_writer = DiscordConnector()

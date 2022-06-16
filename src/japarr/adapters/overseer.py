@@ -12,24 +12,36 @@ class OverseerAdapter(BaseAdapter):
     def __init__(self):
         super().__init__("overseer")
 
-    def search(self, query: str) -> Optional[dict]:
+    @staticmethod
+    def _is_japanese_and_exludes_genres(result: dict, is_anime: bool) -> bool:
+        if not is_anime:
+            exclude_genres = [16]
+        else:
+            exclude_genres = []
+        if (
+            "JP" in result.get("originCountry", [])
+            or result.get("originalLanguage", "") == "ja"
+        ) and not any(
+            [genre_id in result.get("genreIds") for genre_id in exclude_genres]
+        ):
+            return True
+
+    def search(self, query: str, is_anime=False) -> Optional[dict]:
         results = requests.get(
             f"{self.url}/v1/search?query=={query}&language=jp",
             headers=self.headers,
         )
-        if results.status_code == 200:
-            result_json = results.json()
-            for result in result_json.get("results", []):
-                if (
-                    "JP" in result.get("originCountry", [])
-                    or result.get("originalLanguage", "") == "ja"
-                ):
-                    if result.get("mediaType") == "tv":
-                        return self.get_tv_details(result["id"])
-                    else:
-                        return self.get_movie_details(result["id"])
-        else:
+        if results.status_code != 200:
             logger.info("No results found for search: '%s'", query)
+            return
+
+        result_json = results.json()
+        for result in result_json.get("results", []):
+            if self._is_japanese_and_exludes_genres(result, is_anime):
+                if result.get("mediaType") == "tv":
+                    return self.get_tv_details(result["id"])
+                else:
+                    return self.get_movie_details(result["id"])
 
     def get_tv_details(self, id: int):
         results = requests.get(

@@ -1,6 +1,6 @@
 import requests
+from Japarr.japarr.adapters.discord import DiscordConnector
 from japarr.adapters.base import BaseAdapter
-from japarr.adapters.discord import discord_writer
 from japarr.logger import get_module_logger
 
 logger = get_module_logger("Sonarr")
@@ -9,8 +9,9 @@ logger = get_module_logger("Sonarr")
 class SonarrAdapter(BaseAdapter):
 
     # docs: https://github.com/Sonarr/Sonarr/wiki/Series
-    def __init__(self):
+    def __init__(self, discord: DiscordConnector):
         super().__init__("sonarr")
+        self.discord = discord
         if not self.root_folder:
             self._set_root_folder()
 
@@ -40,9 +41,12 @@ class SonarrAdapter(BaseAdapter):
 
     def create(self, overseer_data: dict) -> dict:
         media_info = overseer_data.get("mediaInfo", {})
+        tvdb_id = media_info.get("tvdbId")
+        if not tvdb_id:
+            tvdb_id = overseer_data.get("externalIds", {}).get("tvdbId")
         slugname = overseer_data["name"].replace(" ", "-")
         data = {
-            "tvdbId": media_info.get("tvdbId"),
+            "tvdbId": tvdb_id,
             "title": overseer_data["originalName"],
             "profileId": self.profile_id,
             "titleSlug": slugname,
@@ -75,13 +79,13 @@ class SonarrAdapter(BaseAdapter):
             error_json = eval(upload_result.text)[0]
             error = error_json.get("errorMessage")
             value = error_json.get("attemptedValue")
-            discord_writer.send(
+            self.discord.send(
                 f"Could not add '{overseer_data['originalName']}' to Sonarr.\n Reason: {error} with value: '{value}'"
             )
             logger.info("Drama could not be added to Sonarr! Reason:")
             logger.info(upload_result.text)
         else:
-            discord_writer.send(
+            self.discord.send(
                 f"Added {overseer_data['originalName']} to Sonarr."
             )
         # logger.debug("Show Creation result: %s", upload_result)

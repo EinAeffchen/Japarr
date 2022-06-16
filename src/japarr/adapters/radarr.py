@@ -3,16 +3,15 @@ from datetime import datetime
 from typing import Optional
 
 import requests
+from Japarr.japarr.adapters.discord import DiscordConnector
 from japarr.adapters.base import BaseAdapter
-from Japarr.japarr.adapters.discord import discord_writer
 from japarr.logger import get_module_logger
 
 logger = get_module_logger("Radarr")
 
 
 class RadarrAdapter(BaseAdapter):
-    def __init__(self):
-        self.tags = []
+    def __init__(self, discord: DiscordConnector):
         super().__init__("radarr")
         if not self.root_folder:
             self._set_root_folder()
@@ -49,7 +48,6 @@ class RadarrAdapter(BaseAdapter):
         create_data["minimumAvailability"] = "released"
         create_data["qualityProfileId"] = self.profile_id
         create_data["rootFolderPath"] = self.root_folder
-        # create_data["tags"] = self.tags
         upload_result = requests.post(
             f"{self.url}/v3/movie", json=create_data, headers=self.headers
         )
@@ -59,12 +57,12 @@ class RadarrAdapter(BaseAdapter):
                 error_json = error_json[0]
             error = error_json.get("title")
             value = error_json.get("errors")
-            discord_writer.send(
+            self.discord.send(
                 f"Could not add '{overseer_data['originalTitle']}' to Radarr.\n Reason: {error} with value: '{value}'"
             )
             logger.info("Drama could not be added to Radarr! Reason:")
             logger.info(upload_result.text)
         else:
-            discord_writer.send(
+            self.discord.send(
                 f"Added {overseer_data['originalTitle']} to Radarr."
             )

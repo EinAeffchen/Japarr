@@ -1,0 +1,12 @@
+version: "3.2"
+
+services:
+  japarr:
+    image: einaeffchen/japarr:0.1
+    container_name: japarr
+    ports:
+      - "7557:7557"
+    volumes:
+      - ./config.toml:/src/japarr/src/japarr/config/config.toml
+    working_dir: /src/japarr/src/
+    restart: always

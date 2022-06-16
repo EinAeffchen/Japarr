@@ -1,7 +1,10 @@
 # don't bother with trying the keys here, they're solely for local development systems
 
 [general]
-discord_webhook = "https://discord.com/api/webhooks/983334269646688317/h7IRtKl4uFC9NiAkaeIrk_HpXm9g-iJgp4aLHdl5Wc_iZKlC_-LGZ7jtTY-0hzAxiMHT"
+discord_webhook = "https://discord.com/api/webhooks/983663781055979520/y28tn0y4JZ8kf133NksDIw98eT0ZZ4UWM4-z7zaglHcfiC0-W3RlFaTqTy_kks8XKR6n"
+dramas_path = "/tmp/dramas"
+movies_path = "/tmp/movies"
+
 
 [sonarr]
 protocol = "http"
