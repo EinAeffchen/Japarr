@@ -1,14 +1,14 @@
 import cgi
 import re
 import shutil
-from typing import Generator, Optional, Tuple
+from typing import Generator, List, Optional, Tuple, Union
 import urllib.request
 import requests
 from parsel import Selector
 from requests.compat import urljoin
 from japarr.adapters.discord import DiscordConnector
 from japarr.config.config import get_config
-from japarr.media_objects import Movie
+from japarr.media_objects import Drama, Movie
 from requests import Response
 
 
@@ -29,26 +29,47 @@ class JRawsDownloader:
         self.MOVIE_URL = "https://jraws.com/category/movie/page/{}/"
         self.discord = discord
 
+    def _create_media_obj(
+        self, article_type, status, title, detail_url, title_eng
+    ) -> Union[Movie, Drama]:
+        if article_type == "drama":
+            if status.smaller() == "ongoing":
+                ongoing = 1
+            else:
+                ongoing = 0
+            media_obj = Drama(
+                title=title,
+                url=detail_url,
+                status=ongoing,
+                english_title=title_eng,
+            )
+        else:
+            media_obj = Movie(
+                title=title, url=detail_url, english_title=title_eng
+            )
+        return media_obj
+
     def _parse_articles(
         self, request: Response, article_type: str
-    ) -> Tuple[int, list, Optional[str]]:
+    ) -> Tuple[List[Union[Movie, Drama]], Optional[str]]:
         sel = Selector(request.text)
         articles = sel.xpath("//article")
         article_list = list()
         for article in articles:
-            article_dict = {}
-            if article_type == "drama":
-                article_dict["status"] = article.xpath(
-                    "/div[@class='ep-date']/span[@class='ep-status-og']/text()"
-                ).get()
-            article_dict["drama_name"] = article.xpath(
-                "/header/h2/a/text()"
-            ).get()
-            article_dict["eng_name"] = article.xpath(
+            title = article.xpath("/header/h2/a/text()").get()
+            # english name is not always given
+            title_eng = article.xpath(
                 "/header/div[@class='ep-eng']/text()"
             ).get()
-            article_dict["detail_url"] = article.xpath("//a/@href").get()
-            article_list.append(article_dict)
+            detail_url = article.xpath("//a/@href").get()
+            status = article.xpath(
+                "/div[@class='ep-date']/span[@class='ep-status-og']/text()"
+            ).get()
+
+            media_obj = self._create_media_obj(
+                article_type, status, title, detail_url, title_eng
+            )
+            article_list.append(media_obj)
         has_next_page = sel.xpath(
             "//nav/a[@class='next page-numbers']/@href"
         ).get()
@@ -64,12 +85,11 @@ class JRawsDownloader:
         yield article_list
 
     def _get_article_quality(self, content: str) -> Tuple[str, str, str]:
-        content = content.replace("<code>", "").replace("</code>", "")
         quality, size, release = [info.strip() for info in content.split("|")]
         return quality, size, release
 
     def _parse_download(self, selector: Selector):
-        download_links = selector.xpath("//a")
+        download_links = selector.xpath("./a")
         downloads = dict()
         for download in download_links:
             episode = download.xpath("./span[@class='episode']/text()").get()
@@ -77,16 +97,16 @@ class JRawsDownloader:
             downloads[episode] = url
         return downloads
 
-    def parse_media_details(self, url: str, article_dict: dict) -> dict:
+    def parse_media_details(self, url: str) -> dict:
+        detail_dict = dict()
         response = requests.get(url)
         sel = Selector(response.text)
-        article_dict["jap_title"] = sel.xpath("//h1/text()").getall()[1]
+        detail_dict["jap_title"] = sel.xpath("//h1/text()").getall()[1]
         download_infos = sel.xpath("//div[@id='download-list']/div")
-        article_dict["quality"] = self._get_article_quality(
-            download_infos.xpath("/text()").getall()[0]
-        )
-        article_dict["download_urls"] = self._parse_download(download_infos[1])
-        return article_dict
+        meta_infos = download_infos.xpath("//code/text()").get()
+        detail_dict["quality"] = self._get_article_quality(meta_infos)[0]
+        detail_dict["download_urls"] = self._parse_download(download_infos[1])
+        return detail_dict
 
     def download_episodes(self, drama_url: str):
         page_req = requests.get(drama_url)
@@ -97,7 +117,6 @@ class JRawsDownloader:
         show_title = "".join(
             [moji for moji in show_title if (moji.isalnum() or moji.isspace())]
         )
-
         folder = self.TARGET_PATH / show_title / "Season 01"
         folder.mkdir(exist_ok=True, parents=True)
 
@@ -152,11 +171,3 @@ class JRawsDownloader:
                     with open(folder / filename, "wb") as f_in:
                         shutil.copyfileobj(remotefile, f_in, 4048 * 16192)
         return show_title
-
-    def download_dramas_from_page(self, drama_page: requests.models.Request):
-        next_page = sel.xpath(
-            "//nav/span[contains(@class, 'current')]/following-sibling::a[1]/@href"
-        ).get()
-        if next_page:
-            page = requests.get(next_page)
-            self.download_dramas_from_page(page)
