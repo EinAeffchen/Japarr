@@ -9,6 +9,7 @@ from japarr.adapters.jraws import JRawsDownloader
 
 from japarr.media_objects import Movie, Drama
 
+
 class DownloadManager:
     discord = DiscordConnector
     sonarr = SonarrAdapter
@@ -30,25 +31,30 @@ class DownloadManager:
     def start_movies(self):
         movies = self.jraw_adapter.get_movies()
         for movie in movies:
+            search_result = self.overseerr.search(
+                query=movie.title, is_anime=False
+            )
+            self.radarr.create(search_result)
             if self.active:
-                media_detail_dict = self.jraw_adapter.parse_media_details(movie.url)
+                media_detail_dict = self.jraw_adapter.parse_media_details(
+                    movie.url
+                )
                 movie.set_media_details(media_detail_dict)
-                #TODO download of files
-                # trigger to radarr/overseerr
+                for downloaded_file in movie.download_files():
+                    self.db.add_movie(downloaded_file["title"], movie.url)
 
     def start_dramas(self):
         """
         Still has to be implemented
         """
         pass
-            
 
     def start_anime(self):
         """
         Still has to be implemented
         """
         pass
-    
+
     def start(self):
         self.active = True
         self.start_movies()
@@ -62,4 +68,3 @@ class DownloadManager:
 if __name__ == "__main__":
     dm = DownloadManager()
     dm.start()
-

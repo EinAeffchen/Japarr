@@ -1,6 +1,8 @@
 from japarr.adapters.jraws import JRawsDownloader
 from parsel import Selector
 
+from japarr.media_objects import Movie
+
 
 def test_get_article_quality():
     jr = JRawsDownloader("discord")
@@ -40,3 +42,18 @@ def test_parse_media_details():
             3: "https://jraws.com/download/?hash=ejIwUEFrbkxPdVpYMTFmS1huT3h1bWY0NHNrNUVTUUVCZEo2U2dEa3d0eTBUYVVOQ083aWtGUnVNcnVlZUxDNThkMzVSY29DRlI5WmlpZFA1RXJTNDFXbEVaSURBZmNGTUJWTWhKVXVCT096Z05SbzRJLzZxQ2VqMlZYMklPVUVxamVaUG9XdTlJclFQTjlGR09wUXNBPT0mJjc1Y2M0ZTlhNzQwMWU0MzcxZTU2ZWQyMGYzNWQxMTYx&amp;id=1449&amp;ep=3",
         },
     )
+
+
+def test_create_media_obj():
+    jr = JRawsDownloader("discord")
+    media_obj = jr._create_media_obj(
+        "movie",
+        None,
+        "Test movie",
+        "http://somewhere.com",
+        "Still a test movie",
+    )
+    assert isinstance(media_obj, Movie)
+    assert media_obj.english_title == "Still a test movie"
+    assert media_obj.title == "Test movie"
+    assert media_obj.url == "http://somewhere.com"
