@@ -31,17 +31,18 @@ class DownloadManager:
     def start_movies(self):
         movies = self.jraw_adapter.get_movies()
         for movie in movies:
+            if not self.active:
+                return
             search_result = self.overseerr.search(
                 query=movie.title, is_anime=False
             )
             self.radarr.create(search_result)
-            if self.active:
-                media_detail_dict = self.jraw_adapter.parse_media_details(
-                    movie.url
-                )
-                movie.set_media_details(media_detail_dict)
-                for downloaded_file in movie.download_files():
-                    self.db.add_movie(downloaded_file["title"], movie.url)
+            media_detail_dict = self.jraw_adapter.parse_media_details(
+                movie.url
+            )
+            movie.set_media_details(media_detail_dict)
+            for downloaded_file in movie.download_files():
+                self.db.add_movie(downloaded_file["title"], movie.url)
 
     def start_dramas(self):
         """
