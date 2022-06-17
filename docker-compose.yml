@@ -9,4 +9,4 @@ services:
     volumes:
       - ./config.toml:/src/japarr/src/japarr/config/config.toml
     working_dir: /src/japarr/src/
-    restart: always
+    restart: unless-stopped

@@ -98,7 +98,7 @@ class Media:
             yield self._download(download_link, path, episode)
 
     def set_media_details(self, detail_dict):
-        self.original_title = detail_dict["original_title"]
+        self.original_title = detail_dict["jap_title"]
         self.quality = detail_dict["quality"]
         self.download_urls = detail_dict["download_urls"]
 

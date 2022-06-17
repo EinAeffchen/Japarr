@@ -1,5 +1,5 @@
 import requests
-from Japarr.japarr.adapters.discord import DiscordConnector
+from japarr.adapters.discord import DiscordConnector
 from japarr.adapters.base import BaseAdapter
 from japarr.logger import get_module_logger
 
@@ -7,6 +7,8 @@ logger = get_module_logger("Sonarr")
 
 
 class SonarrAdapter(BaseAdapter):
+    discord: DiscordConnector
+    url: str
 
     # docs: https://github.com/Sonarr/Sonarr/wiki/Series
     def __init__(self, discord: DiscordConnector):
@@ -88,4 +90,3 @@ class SonarrAdapter(BaseAdapter):
             self.discord.send(
                 f"Added {overseer_data['originalName']} to Sonarr."
             )
-        # logger.debug("Show Creation result: %s", upload_result)

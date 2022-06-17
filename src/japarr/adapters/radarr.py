@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 import requests
-from Japarr.japarr.adapters.discord import DiscordConnector
+from japarr.adapters.discord import DiscordConnector
 from japarr.adapters.base import BaseAdapter
 from japarr.logger import get_module_logger
 
@@ -13,6 +13,7 @@ logger = get_module_logger("Radarr")
 class RadarrAdapter(BaseAdapter):
     def __init__(self, discord: DiscordConnector):
         super().__init__("radarr")
+        self.discord = discord
         if not self.root_folder:
             self._set_root_folder()
 
@@ -31,13 +32,16 @@ class RadarrAdapter(BaseAdapter):
                 exit
 
     def _get_create_dict(self, tmdb_id: int) -> Optional[dict]:
-        detail_request = requests.get(f"{self.url}/v3/movie/lookup?term=tmdb:{tmdb_id}", headers=self.headers)
+        detail_request = requests.get(
+            f"{self.url}/v3/movie/lookup?term=tmdb:{tmdb_id}",
+            headers=self.headers,
+        )
         if detail_request.status_code == 200:
             create_json = detail_request.json()
             if create_json:
                 return create_json[0]
-            
-    def create(self, overseer_data: dict) -> dict:
+
+    def create(self, overseer_data: dict) -> Optional[int]:
         tmdbid = overseer_data["id"]
         create_data = self._get_create_dict(tmdbid)
         today = datetime.now()
@@ -60,9 +64,20 @@ class RadarrAdapter(BaseAdapter):
             self.discord.send(
                 f"Could not add '{overseer_data['originalTitle']}' to Radarr.\n Reason: {error} with value: '{value}'"
             )
-            logger.info("Drama could not be added to Radarr! Reason:")
+            logger.info("Movie could not be added to Radarr! Reason:")
             logger.info(upload_result.text)
+            #TODO lookup movie id via tmdbid and retrieve if file exists
+            movie_id = upload_result.json()[0].get("attemptedValue", 0)
+            movie_info = requests.get(
+                f"{self.url}/v3/movie/{movie_id}", headers=self.headers
+            )
+            if movie_info.status_code == 200:
+                return movie_info.json().get("sizeOnDisk", 0)
+            else:
+                logger.info(f"Couldn't retrieve info to movie '{overseer_data['originalTitle']}' with id {movie_id} either.")
+                return -1
         else:
             self.discord.send(
                 f"Added {overseer_data['originalTitle']} to Radarr."
             )
+            return 0

@@ -27,5 +27,5 @@ RUN echo ls /src/japarr
 RUN python -m pip install --user -e /src/japarr[test]
 
 ENV PYTHONUNBUFFERED=1
-# CMD python /src/japarr/src/japarr/main.py
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+CMD ["python", "/src/japarr/src/japarr/main.py"]
+# ENTRYPOINT ["tail", "-f", "/dev/null"]

@@ -6,6 +6,7 @@ from japarr.adapters.radarr import RadarrAdapter
 from japarr.adapters.discord import DiscordConnector
 from japarr.db import JaparrDB
 from japarr.adapters.jraws import JRawsDownloader
+from japarr.logger import get_module_logger
 
 from japarr.media_objects import Movie, Drama
 
@@ -25,24 +26,34 @@ class DownloadManager:
         self.radarr = RadarrAdapter(self.discord)
         self.overseerr = OverseerAdapter()
         self.db = JaparrDB()
-        self.jraw_adapter = JRawsDownloader()
+        self.jraw_adapter = JRawsDownloader(self.discord)
         self.active = True
+        self.logger = get_module_logger("DownloadManager")
 
     def start_movies(self):
-        movies = self.jraw_adapter.get_movies()
-        for movie in movies:
-            if not self.active:
-                return
-            search_result = self.overseerr.search(
-                query=movie.title, is_anime=False
-            )
-            self.radarr.create(search_result)
-            media_detail_dict = self.jraw_adapter.parse_media_details(
-                movie.url
-            )
-            movie.set_media_details(media_detail_dict)
-            for downloaded_file in movie.download_files():
-                self.db.add_movie(downloaded_file["title"], movie.url)
+        next_page = 1
+        while next_page:
+            movies, next_page = self.jraw_adapter.get_movies(next_page)
+            for movie in movies:
+                self.logger.debug("Movie: %s", vars(movie))
+                if not self.active:
+                    return
+                self.logger.debug("Searching for movie %s", movie.title)
+                search_result = self.overseerr.search(
+                    query=movie.title, is_anime=False
+                )
+                size_on_disk = self.radarr.create(search_result)
+                #TODO check if movie is already existing or not
+                if size_on_disk < 1:
+                    media_detail_dict = self.jraw_adapter.parse_media_details(
+                        movie.url
+                    )
+                    movie.set_media_details(media_detail_dict)
+                    for downloaded_file in movie.download_files():
+                        self.db.add_movie(downloaded_file["title"], movie.url)
+                else:
+                    self.logger.info(f"Movie {movie.title} already exists, skipping download!")
+                    self.db.add_movie(movie.title, movie.url)
 
     def start_dramas(self):
         """

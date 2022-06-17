@@ -4,6 +4,15 @@ from japarr.config.config import get_config
 logger = get_module_logger("Adapters")
 
 class BaseAdapter:
+    url: str
+    system: str
+    profile_id: int
+    automonitor: bool
+    season_folder: bool
+    root_folder: str
+    tags: list
+    active: bool
+
     def _load_config(self, system: str):
         try:
             self.system = system
@@ -25,13 +34,14 @@ class BaseAdapter:
                     setattr(self, key, value)
         except KeyError:
             logger.error(
-                "Not all necessary settings set for system: %s.\n Please check your config.toml",
+                "Not all necessary settings set for system: %s.\n Please check your config.toml.\nJaparr will run without the connection",
                 system,
             )
+            self.active = False
 
     def _test_connection(self):
         status = requests.get(
-            f"{self.url}/system/status", headers=self.headers
+            f"{self.url}/v3/system/status", headers=self.headers
         )
         if status.status_code == 200:
             logger.debug(
@@ -45,5 +55,6 @@ class BaseAdapter:
             )
 
     def __init__(self, system: str):
+        self.active = True
         self._load_config(system)
         self._test_connection()

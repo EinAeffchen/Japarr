@@ -1,11 +1,7 @@
-import cgi
-import re
-import shutil
 from typing import Generator, List, Optional, Tuple, Union
-import urllib.request
 import requests
 from parsel import Selector
-from requests.compat import urljoin
+from japarr.logger import get_module_logger
 from japarr.adapters.discord import DiscordConnector
 from japarr.config.config import get_config
 from japarr.media_objects import Drama, Movie
@@ -28,6 +24,7 @@ class JRawsDownloader:
         self.DRAMA_URL = "https://jraws.com/category/drama/page/{}/"
         self.MOVIE_URL = "https://jraws.com/category/movie/page/{}/"
         self.discord = discord
+        self.logger = get_module_logger("JrawsDownloader")
 
     def _create_media_obj(
         self, article_type, status, title, detail_url, title_eng
@@ -55,15 +52,16 @@ class JRawsDownloader:
         sel = Selector(request.text)
         articles = sel.xpath("//article")
         article_list = list()
+        self.logger.debug("Parsing %s articles", len(articles))
         for article in articles:
-            title = article.xpath("/header/h2/a/text()").get()
+            title = article.xpath("./header/h2/a/text()").get()
             # english name is not always given
             title_eng = article.xpath(
-                "/header/div[@class='ep-eng']/text()"
+                "./header/div[@class='ep-eng']/text()"
             ).get()
-            detail_url = article.xpath("//a/@href").get()
+            detail_url = article.xpath(".//a/@href").get()
             status = article.xpath(
-                "/div[@class='ep-date']/span[@class='ep-status-og']/text()"
+                "./div[@class='ep-date']/span[@class='ep-status-og']/text()"
             ).get()
 
             media_obj = self._create_media_obj(
@@ -75,14 +73,15 @@ class JRawsDownloader:
         ).get()
         return article_list, has_next_page
 
-    def get_movies(self, page: int = 1) -> Generator[Movie, None, None]:
+    def get_movies(self, page: int = 1) -> Tuple[List[Movie], int]:
+        self.logger.debug("[*] Getting movies from page %s", page)
         movie_page = requests.get(self.MOVIE_URL.format(page))
         article_list, has_next_page = self._parse_articles(
             movie_page, article_type="movie"
         )
-        if has_next_page:
-            yield self.get_movies(page + 1)
-        yield article_list
+        if not has_next_page:
+            return (article_list, 0)
+        return (article_list, page+1)
 
     def _get_article_quality(self, content: str) -> Tuple[str, str, str]:
         quality, size, release = [info.strip() for info in content.split("|")]
@@ -94,7 +93,7 @@ class JRawsDownloader:
         for download in download_links:
             episode = download.xpath("./span[@class='episode']/text()").get()
             url = download.xpath("./@href").get()
-            downloads[episode] = url
+            downloads[episode] = f"https://jraws.com/{url}"
         return downloads
 
     def parse_media_details(self, url: str) -> dict:

@@ -73,4 +73,3 @@ class JaparrDB:
                     ([id] INTEGER PRIMARY KEY, [name] TEXT, [url] TEXT)
                     """
             )
-        print("executed setup!")
