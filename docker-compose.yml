@@ -8,5 +8,7 @@ services:
       - "7557:7557"
     volumes:
       - ./config.toml:/src/japarr/src/japarr/config/config.toml
+      - /mnt/nas/tvshows/shows:/media/shows
+      - /mnt/nas/movies:/media/movies
     working_dir: /src/japarr/src/
     restart: unless-stopped
