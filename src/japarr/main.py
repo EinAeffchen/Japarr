@@ -35,24 +35,37 @@ class DownloadManager:
         while next_page:
             movies, next_page = self.jraw_adapter.get_movies(next_page)
             for movie in movies:
+                if self.db.get_movie(movie.title):
+                    self.logger.info(
+                        "Already downloaded %s, skipping!", movie.title
+                    )
+                    continue
                 self.logger.debug("Movie: %s", vars(movie))
                 if not self.active:
                     return
                 self.logger.debug("Searching for movie %s", movie.title)
-                search_result = self.overseerr.search(
-                    query=movie.title, is_anime=False
+                media_detail_dict = self.jraw_adapter.parse_media_details(
+                    movie.url
                 )
-                size_on_disk = self.radarr.create(search_result)
-                #TODO check if movie is already existing or not
-                if size_on_disk < 1:
-                    media_detail_dict = self.jraw_adapter.parse_media_details(
-                        movie.url
-                    )
-                    movie.set_media_details(media_detail_dict)
-                    for downloaded_file in movie.download_files():
-                        self.db.add_movie(downloaded_file["title"], movie.url)
+                movie.set_media_details(media_detail_dict)
+                search_result = self.overseerr.search(
+                    movie=movie, is_anime=False
+                )
+                if search_result:
+                    radarr_obj = self.radarr.create(search_result)
+                if not search_result or radarr_obj["sizeOnDisk"] < 1:
+                    movie.folder = radarr_obj["folderName"]
+                    for _ in movie.download_files():
+                        self.db.add_movie(movie.title, movie.url)
+                        if movie_id := radarr_obj.get("id"):
+                            result = self.radarr.refresh(movie_id)
+                            self.discord.send(
+                                f"Triggered autorefresh on {movie.title}: {result.get('message')}"
+                            )
                 else:
-                    self.logger.info(f"Movie {movie.title} already exists, skipping download!")
+                    self.logger.info(
+                        f"Movie {movie.title} already exists, skipping download!"
+                    )
                     self.db.add_movie(movie.title, movie.url)
 
     def start_dramas(self):
