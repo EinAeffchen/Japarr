@@ -9,6 +9,7 @@ import requests
 from parsel import Selector
 
 from japarr.config.config import get_config
+from japarr.logger import get_module_logger
 
 
 class Media:
@@ -18,6 +19,7 @@ class Media:
     original_title: str
     english_title: str
     quality: str
+    folder: str
 
     def _get_file_path(self) -> Path:
         raise NotImplementedError
@@ -76,12 +78,10 @@ class Media:
         else:
             filename = params["filename"]
         if not (path / filename).is_file():
-            try:
+            with requests.get(download_link, stream=True) as r:
                 with open(path / filename, "wb") as f_in:
-                    f_in.write(remotefile.read())
-            except OverflowError:
-                with open(path / filename, "wb") as f_in:
-                    shutil.copyfileobj(remotefile, f_in, 4048 * 16192)
+                    for chunk in r.iter_content(chunk_size=4048 * 16192):
+                        f_in.write(chunk)
         if isinstance(self, Drama):
             return {
                 "title": self.title,
@@ -94,6 +94,11 @@ class Media:
     def download_files(self):
         path = self._check_folder()
         for episode, url in self.download_urls.items():
+            self.logger.info(
+                "Downloading episode %s/%s...",
+                episode,
+                len(self.download_urls),
+            )
             download_link = self._extract_url(url)
             yield self._download(download_link, path, episode)
 
@@ -117,16 +122,18 @@ class Media:
         self.original_title = original_title
         self.english_title = english_title
         self.quality = quality
+        self.logger = get_module_logger("Media")
 
 
 class Movie(Media):
     def _get_file_path(self) -> str:
         cfg = get_config()
         movie_path = Path(cfg["general"]["movies_path"])
-        return movie_path / self.title
+        return movie_path / Path(self.folder).name
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
+        self.logger = get_module_logger("Movie")
 
 
 class Drama(Media):
@@ -147,3 +154,4 @@ class Drama(Media):
         super().__init__(**kwargs)
         self.season = season
         self.ongoing = ongoing
+        self.logger = get_module_logger("Drama")
