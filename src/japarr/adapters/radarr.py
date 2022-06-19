@@ -42,7 +42,7 @@ class RadarrAdapter(BaseAdapter):
                 return create_json[0]
 
     def refresh(self, id: int) -> dict:
-        command_data = {"name": "RefreshMove", "id": id}
+        command_data = {"name": "RefreshMovie", "movieIds": [id]}
         command = requests.post(
             f"{self.url}/v3/command",
             headers=self.headers,
