@@ -77,6 +77,10 @@ class Media:
             filename = filename.replace("Ep", f"S0{self.season}EP")
         else:
             filename = params["filename"]
+        self.logger.info(
+            "Downloading %s...",
+            filename,
+        )
         if not (path / filename).is_file():
             with requests.get(download_link, stream=True) as r:
                 with open(path / filename, "wb") as f_in:
@@ -94,16 +98,11 @@ class Media:
     def download_files(self):
         path = self._check_folder()
         for episode, url in self.download_urls.items():
-            self.logger.info(
-                "Downloading episode %s/%s...",
-                episode,
-                len(self.download_urls),
-            )
             download_link = self._extract_url(url)
             yield self._download(download_link, path, episode)
 
     def set_media_details(self, detail_dict):
-        self.original_title = detail_dict["jap_title"]
+        self.original_title = detail_dict.get("jap_title")
         self.quality = detail_dict["quality"]
         self.download_urls = detail_dict["download_urls"]
 
