@@ -5,6 +5,10 @@ push:
 	docker tag japarr einaeffchen/japarr:0.1
 	docker push einaeffchen/japarr:0.1
 
+build-develop: build
+	docker tag japarr einaeffchen/japarr:develop
+	docker push einaeffchen/japarr:develop
+
 up:
 	docker-compose up -d
 
