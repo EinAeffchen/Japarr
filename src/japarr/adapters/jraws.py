@@ -100,7 +100,9 @@ class JRawsDownloader:
         detail_dict = dict()
         response = requests.get(url)
         sel = Selector(response.text)
-        detail_dict["jap_title"] = sel.xpath("//h1/text()").getall()[1]
+        titles = sel.xpath("//h1/text()").getall()
+        if len(titles) >1:
+            detail_dict["jap_title"] = titles[1] 
         download_infos = sel.xpath("//div[@id='download-list']/div")
         meta_infos = download_infos.xpath("//code/text()").get()
         detail_dict["quality"] = self._get_article_quality(meta_infos)[0]
