@@ -58,7 +58,6 @@ class JaparrDB:
             )
 
     def _setup_db(self):
-        print(f"Setting up db for {self.db_path}")
         with self.ConnectionManager(self.db_path) as c:
             c.execute(
                 """
