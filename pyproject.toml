@@ -19,6 +19,7 @@ dependencies = [
     "requests==2.26.0",
     "parsel==1.6.0",
     "discord==1.7.3",
+    "fastapi==0.79.0",
 ]
 
 [project.optional-dependencies]
@@ -31,4 +32,5 @@ test = [
     "tenacity==8.0.1",
     "pytest-postgresql==3.1.2",
     "transaction==3.0.1",
+    "uvicorn==0.18.2"
 ]

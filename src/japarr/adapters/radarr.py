@@ -74,10 +74,9 @@ class RadarrAdapter(BaseAdapter):
             error_json = json.loads(upload_result.text)
             if isinstance(error_json, list):
                 error_json = error_json[0]
-            error = error_json.get("title")
-            value = error_json.get("errors")
+            error = error_json.get("errorMessage")
             self.discord.send(
-                f"Could not add '{overseer_data['originalTitle']}' to Radarr.\n Reason: {error} with value: '{value}'"
+                f"Could not add '{overseer_data['originalTitle']}' to Radarr.\n Reason: {error}"
             )
             logger.info("Movie could not be added to Radarr! Reason:")
             logger.info(upload_result.text)

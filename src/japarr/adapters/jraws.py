@@ -4,9 +4,8 @@ from parsel import Selector
 from japarr.logger import get_module_logger
 from japarr.adapters.discord import DiscordConnector
 from japarr.config.config import get_config
-from japarr.media_objects import Drama, Movie
+from japarr.media_objects import Drama, Movie, MediaMetaObject
 from requests import Response
-
 
 class JRawsDownloader:
     BASE_URL: str
@@ -30,14 +29,14 @@ class JRawsDownloader:
         self, article_type, status, title, detail_url, title_eng
     ) -> Union[Movie, Drama]:
         if article_type == "drama":
-            if status.smaller() == "ongoing":
+            if status.lower() == "ongoing":
                 ongoing = 1
             else:
                 ongoing = 0
             media_obj = Drama(
                 title=title,
                 url=detail_url,
-                status=ongoing,
+                ongoing=ongoing,
                 english_title=title_eng,
             )
         else:
@@ -61,7 +60,7 @@ class JRawsDownloader:
             ).get()
             detail_url = article.xpath(".//a/@href").get()
             status = article.xpath(
-                "./div[@class='ep-date']/span[@class='ep-status-og']/text()"
+                "./div[@class='ep-date']/span[contains(@class, 'ep-status')]/text()"
             ).get()
 
             media_obj = self._create_media_obj(
@@ -96,15 +95,25 @@ class JRawsDownloader:
             downloads[episode] = f"https://jraws.com/{url}"
         return downloads
 
-    def parse_media_details(self, url: str) -> dict:
-        detail_dict = dict()
+    def parse_media_details(self, url: str) -> MediaMetaObject:
+        media_obj = MediaMetaObject()
         response = requests.get(url)
         sel = Selector(response.text)
         titles = sel.xpath("//h1/text()").getall()
         if len(titles) >1:
-            detail_dict["jap_title"] = titles[1] 
+            media_obj.jap_title = titles[1] 
         download_infos = sel.xpath("//div[@id='download-list']/div")
         meta_infos = download_infos.xpath("//code/text()").get()
-        detail_dict["quality"] = self._get_article_quality(meta_infos)[0]
-        detail_dict["download_urls"] = self._parse_download(download_infos[1])
-        return detail_dict
+        media_obj.quality, media_obj.size, media_obj.release = self._get_article_quality(meta_infos)
+        media_obj.download_urls = self._parse_download(download_infos[1])
+        return media_obj
+
+    def get_dramas(self, page: int = 1) -> Tuple[List[Drama], int]:
+        self.logger.debug("[*] Getting dramas from page %s", page)
+        movie_page = requests.get(self.DRAMA_URL.format(page))
+        article_list, has_next_page = self._parse_articles(
+            movie_page, article_type="drama"
+        )
+        if not has_next_page:
+            return (article_list, 0)
+        return (article_list, page+1)

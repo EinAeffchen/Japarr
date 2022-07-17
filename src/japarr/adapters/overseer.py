@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Optional, Union
 
 import requests
 from japarr.adapters.base import BaseAdapter
 from japarr.logger import get_module_logger
-from japarr.media_objects import Movie
+from japarr.media_objects import Drama, Movie
 from requests import Response
 
 logger = get_module_logger("Overseer")
@@ -17,7 +17,7 @@ class OverseerAdapter(BaseAdapter):
         self.search_keys = ["original_title", "title", "english_title"]
 
     @staticmethod
-    def _is_japanese_and_exludes_genres(result: dict, is_anime: bool) -> bool:
+    def _is_japanese_and_excludes_genres(result: dict, is_anime: bool) -> bool:
         if not is_anime:
             exclude_genres = [16]
         else:
@@ -30,7 +30,9 @@ class OverseerAdapter(BaseAdapter):
         ):
             return True
 
-    def _search_by_query(self, query: str, page:int =1) -> Optional[Response]:
+    def _search_by_query(
+        self, query: str, page: int = 1
+    ) -> Optional[Response]:
         results = requests.get(
             f"{self.url}/v1/search?query=={query}&language=jp&page={page}",
             headers=self.headers,
@@ -40,29 +42,31 @@ class OverseerAdapter(BaseAdapter):
         else:
             results_json = results.json()
             if results_json.get("totalPages") > page:
-                return results_json["results"] + self._search_by_query(query, page+1)
+                return results_json["results"] + self._search_by_query(
+                    query, page + 1
+                )
             return results_json["results"]
 
-    def search(self, movie: Movie, is_anime=False) -> Optional[dict]:
+    def search(
+        self, media: Union[Drama, Movie], is_anime=False
+    ) -> Optional[dict]:
         results = None
         key_index = 0
         while not results and key_index <= 2:
-            query = getattr(movie, self.search_keys[key_index])
+            query = getattr(media, self.search_keys[key_index])
             if not query:
                 key_index += 1
                 continue
             results = self._search_by_query(query)
             key_index += 1
             for result in results:
-                if self._is_japanese_and_exludes_genres(result, is_anime):
+                if self._is_japanese_and_excludes_genres(result, is_anime):
                     if result.get("mediaType") == "tv":
                         return self.get_tv_details(result["id"])
                     else:
                         return self.get_movie_details(result["id"])
                 else:
                     results = None
-            if not results:
-                return
 
     def get_tv_details(self, id: int):
         results = requests.get(

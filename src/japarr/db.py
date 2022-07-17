@@ -31,7 +31,7 @@ class JaparrDB:
     def get_drama(self, title: str) -> list:
         with self.ConnectionManager(self.db_path) as cur:
             cur.execute(
-                "SELECT * FROM dramas WHERE name=? ORDER BY season, episode",
+                "SELECT * FROM dramas WHERE name=? ORDER BY season ASC, episode ASC",
                 (title,),
             )
             return cur.fetchall()

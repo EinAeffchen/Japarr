@@ -41,6 +41,19 @@ class SonarrAdapter(BaseAdapter):
         }
         return parsed_season
 
+    def refresh(self, id: int) -> dict:
+        command_data = {"name": "RefreshSeries", "seriesId": [id]}
+        command = requests.post(
+            f"{self.url}/v3/command",
+            headers=self.headers,
+            json=command_data,
+        )
+        if command.status_code == 201:
+            return command.json()
+        else:
+            logger.warning("Couldn't autorefresh due to %s", command.text)
+            return dict()
+
     def create(self, overseer_data: dict) -> dict:
         media_info = overseer_data.get("mediaInfo", {})
         tvdb_id = media_info.get("tvdbId")

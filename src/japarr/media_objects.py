@@ -12,6 +12,16 @@ from japarr.config.config import get_config
 from japarr.logger import get_module_logger
 
 
+class MediaMetaObject:
+    quality: str
+    jap_title: str
+    download_urls: List[dict]
+    size: str
+    release: str
+
+    def __init__(self):
+        pass
+
 class Media:
     title: str
     url: str
@@ -77,10 +87,6 @@ class Media:
             filename = filename.replace("Ep", f"S0{self.season}EP")
         else:
             filename = params["filename"]
-        self.logger.info(
-            "Downloading %s...",
-            filename,
-        )
         if not (path / filename).is_file():
             with requests.get(download_link, stream=True) as r:
                 with open(path / filename, "wb") as f_in:
@@ -101,10 +107,10 @@ class Media:
             download_link = self._extract_url(url)
             yield self._download(download_link, path, episode)
 
-    def set_media_details(self, detail_dict):
-        self.original_title = detail_dict.get("jap_title")
-        self.quality = detail_dict["quality"]
-        self.download_urls = detail_dict["download_urls"]
+    def set_media_details(self, media_obj: MediaMetaObject):
+        self.original_title = media_obj.jap_title
+        self.quality = media_obj.quality
+        self.download_urls = media_obj.download_urls
 
     def __init__(
         self,
